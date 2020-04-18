@@ -1,169 +1,179 @@
 from tkinter import *
 from tkinter import filedialog
-import PIL
 from PIL import ImageTk, Image
 
 window = Tk()
 window.title("Billede Steganografi")
 window.geometry('700x630')
-
 path = "Image.png"
+image = ImageTk.PhotoImage(Image.open(path))
+image_width = 350
 
-mywidth = 350
+image_label = Label(window, height = 400, width = 0, image = image)
+image_label.place(x = 350, y = 300, anchor = "center")
 
-img = ImageTk.PhotoImage(Image.open(path))
+text = Entry(window, width = 30)
+text.place(x = 140, y = 560)
 
-billede = Label(window, height=400, width=0, image = img)
-billede.place(x=350, y=300, anchor="center")
+text_2 = Label(window, text = "")
+text_2.place(x = 370, y = 560)
 
-txt = Entry(window,width=30)
-txt.place(x=140, y=560)
-
-lbl4 = Label(window, text="")
-lbl4.place(x=370, y=560)
-
-def openbtn():
+# Åbner stifinder for at vælge et billede
+def open_button():
     global path
     path = filedialog.askopenfilename()
     path2 = Image.open(path)
-    wpercent = (mywidth / float(path2.size[0]))
+    wpercent = (image_width / float(path2.size[0]))
     hsize = int((float(path2.size[1]) * float(wpercent)))
-    path2 = path2.resize((mywidth, hsize), PIL.Image.ANTIALIAS)
+    path2 = path2.resize((image_width, hsize), Image.ANTIALIAS)
     path2 = ImageTk.PhotoImage(path2)
-    billede.configure(image=path2)
-    billede.image = path2
+    image_label.configure(image = path2)
+    image_label.image = path2
 
-def savebtn():
+
+# Gem billedet oven på det gamle
+def save_button():
     file = filedialog.asksaveasfilename()
 
+
+# Decode beskeden i billedet
 def decode():
-    imgdecode = Image.open(path, 'r')
+    image_decode = Image.open(path, 'r')
+    image_data = iter(image_decode.getdata())
+    message = ""
 
-    data = ''
-    imgdata = iter(imgdecode.getdata())
-
+    # Decode pixels beskeden bliver returneret
     while (True):
-        pixels = [value for value in imgdata.__next__()[:3] +
-                                  imgdata.__next__()[:3] +
-                                  imgdata.__next__()[:3]]
-        binstr = ''
+        pixels = [value for value in image_data.__next__()[:3] +
+                  image_data.__next__()[:3] +
+                  image_data.__next__()[:3]]
 
+        # Optæl bits fra det sidste bit af hvert pixel
+        binary_str = ""
         for i in pixels[:8]:
             if (i % 2 == 0):
-                binstr += '0'
+                binary_str += '0'
             else:
-                binstr += '1'
+                binary_str += '1'
 
-        data += chr(int(binstr, 2))
-        if (pixels[-1] % 2 != 0):
-            return data
+        # Konverter fra binær til ASCII og gem
+        message += binary_to_ASCII(binary_str)
 
-def decodee():
-    print(path)
-    decodetext=(decode())
-    lbl4.configure(text=decodetext)
+        # Check om beskeden er slut
+        if (pixels[-1] % 2 == 1):
+            text_2.configure(text = message)
+            return message
 
-def genData(data):
-    # list of binary codes
-    # of given data
-    newd = []
 
-    for i in data:
-        newd.append(format(ord(i), '08b'))
-    return newd
+# Konverter et byte fra binær til ASCII
+def binary_to_ASCII(binary):
+    ASCII = chr(int(binary, 2))
+    return ASCII
 
-def modPix(pix, data):
-    datalist = genData(data)
-    lendata = len(datalist)
-    imdata = iter(pix)
 
-    for i in range(lendata):
+# Konverter beskeden fra ASCII til binær
+def ASCII_to_binary(message):
+    binary = []
+    for i in message:
+        binary.append(format(ord(i), '08b'))
+    return binary
 
-        # Extracting 3 pixels at a time
-        pix = [value for value in imdata.__next__()[:3] +
-               imdata.__next__()[:3] +
-               imdata.__next__()[:3]]
 
-        # Pixel value should be made
-        # odd for 1 and even for 0
+# Modificer pixels ud fra beskeden i binær og returnerer dem
+def modify_pixels(pixel, message):
+    binary_message = ASCII_to_binary(message)
+    binary_message_len = len(binary_message)
+    pixel_iterator = iter(pixel)
+
+    # Gennemgå hvert symbol i beskeden
+    for i in range(binary_message_len):
+
+        # Udvælger et sæt af 3 pixels med 9 modificerbare bits
+        pixel = [value for value in pixel_iterator.__next__()[:3] +
+                 pixel_iterator.__next__()[:3] +
+                 pixel_iterator.__next__()[:3]]
+
+        # Gennemgå hvert bit af symbolet
         for j in range(0, 8):
-            if (datalist[i][j] == '0') and (pix[j] % 2 != 0):
 
-                if (pix[j] % 2 != 0):
-                    pix[j] -= 1
+            # Juster pixel værdi ud fra hvert bit
+            if (binary_message[i][j] == '0') and (pixel[j] % 2 == 1):
+                if (pixel[j] % 2 == 1):
+                    pixel[j] -= 1
+            elif (binary_message[i][j] == '1') and (pixel[j] % 2 == 0):
+                pixel[j] -= 1
 
-            elif (datalist[i][j] == '1') and (pix[j] % 2 == 0):
-                pix[j] -= 1
+        # Brug det sidste bit i hvert sæt til at bestemme om decoderen skal læse videre
+        if (i == binary_message_len - 1):
+            if (pixel[-1] % 2 == 0):
+                pixel[-1] -= 1
+        elif (pixel[-1] % 2 != 0):
+            pixel[-1] -= 1
 
-        # Eigh^th pixel of every set tells
-        # whether to stop ot read further.
-        # 0 means keep reading; 1 means the
-        # message is over.
-        if (i == lendata - 1):
-            if (pix[-1] % 2 == 0):
-                pix[-1] -= 1
-        else:
-            if (pix[-1] % 2 != 0):
-                pix[-1] -= 1
+        # Returner en pixel af gangen
+        pixel = tuple(pixel)
+        yield pixel[0:3]
+        yield pixel[3:6]
+        yield pixel[6:9]
 
-        pix = tuple(pix)
-        yield pix[0:3]
-        yield pix[3:6]
-        yield pix[6:9]
 
-def encode_enc(newimg, data):
-    w = newimg.size[0]
+def insert_pixels(image, message):
+    image_width = image.size[0]
     (x, y) = (0, 0)
 
-    for pixel in modPix(newimg.getdata(), data):
+    # Gentag for hver modificeret pixel
+    for pixel in modify_pixels(image.getdata(), message):
 
-        # Putting modified pixels in the new image
-        newimg.putpixel((x, y), pixel)
-        if (x == w - 1):
+        # Indsæt modificeret pixels i det nye billede
+        image.putpixel((x, y), pixel)
+
+        # Vælg positionen af den næste pixel
+        if (x == image_width - 1):
             x = 0
             y += 1
         else:
             x += 1
 
+
+# Encode en besked i det valgte billede
 def encode():
-    imageencode = Image.open(path, 'r')
+    image = Image.open(path, 'r')
+    message = text.get()
+    message_len = len(message)
+    if (message_len == 0):
+        raise ValueError("There is no message")
 
-    data = txt.get()
-    if (len(data) == 0):
-        raise ValueError('Data is empty')
-
-    newimg = imageencode.copy()
-    encode_enc(newimg, data)
-
-    newimg.save(path)
+    insert_pixels(image, message)
+    image.save(path)
 
     path3 = Image.open(path)
-    wpercent = (mywidth / float(path3.size[0]))
+    wpercent = (image_width / float(path3.size[0]))
     hsize = int((float(path3.size[1]) * float(wpercent)))
-    path3 = path3.resize((mywidth, hsize), PIL.Image.ANTIALIAS)
+    path3 = path3.resize((image_width, hsize), Image.ANTIALIAS)
     path3 = ImageTk.PhotoImage(path3)
-    billede.configure(image=path3)
-    billede.image = path3
+    image_label.configure(image = path3)
+    image_label.image = path3
 
-lbl = Label(window, text="Billede steganografi", font=("Oswald", 35))
-lbl.place(x=350, y=40, anchor="center")
 
-lbl2 = Label(window, text="Indsæt tekst:")
-lbl2.place(x=140, y=540)
+lbl = Label(window, text = "Billede steganografi", font = ("Oswald", 35))
+lbl.place(x = 350, y = 40, anchor = "center")
 
-lbl3 = Label(window, text="Besked i billedet:")
-lbl3.place(x=370, y=540)
+lbl2 = Label(window, text = "Indsæt tekst:")
+lbl2.place(x = 140, y = 540)
 
-btnOpen = Button(window, text="Open", command=openbtn)
-btnOpen.place(x=280, y=70)
+lbl3 = Label(window, text = "Besked i billedet:")
+lbl3.place(x = 370, y = 540)
 
-btnSave = Button(window, text="Save", command=savebtn)
-btnSave.place(x=360, y=70)
+btnOpen = Button(window, text = "Open", command = open_button)
+btnOpen.place(x = 280, y = 70)
 
-btnEncode = Button(window, text="Encode", command=encode)
-btnEncode.place(x=200, y=510)
+btnSave = Button(window, text = "Save", command = save_button)
+btnSave.place(x = 360, y = 70)
 
-btnDecode = Button(window, text="Decode", command=decodee)
-btnDecode.place(x=430, y=510)
+btnEncode = Button(window, text = "Encode", command = encode)
+btnEncode.place(x = 200, y = 510)
+
+btnDecode = Button(window, text = "Decode", command = decode)
+btnDecode.place(x = 430, y = 510)
 
 window.mainloop()
