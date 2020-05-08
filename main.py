@@ -46,21 +46,25 @@ class ImageSteganography:
         self.init_buttons()
 
     # Åbn stifinder for at vælge et billede
-    def open_button(self):
-        global path
+    def open(self):
         self.path = filedialog.askopenfilename()
-        path2 = Image.open(self.path)
-        wpercent = (self.image_width / float(path2.size[0]))
-        hsize = int((float(path2.size[1]) * float(wpercent)))
-        path2 = path2.resize((self.image_width, hsize), Image.ANTIALIAS)
-        path2 = ImageTk.PhotoImage(path2)
-        self.image_label.configure(image=path2)
-        self.image_label.image = path2
+        path_2 = Image.open(self.path)
+        wpercent = (self.image_width / float(path_2.size[0]))
+        hsize = int((float(path_2.size[1]) * float(wpercent)))
+        path_2 = path_2.resize((self.image_width, hsize), Image.ANTIALIAS)
+        path_2 = ImageTk.PhotoImage(path_2)
+        self.image_label.configure(image=path_2)
+        self.image_label.image = path_2
         self.text_open.configure(text="Billede hentet")
 
-    # Gem billedet oven på det gamle
-    def save_button(self):
-        filedialog.asksaveasfilename()
+    # Åbn stifinder for at gemme billede
+    def save(self):
+        file_names = [('PNG Files', ".png")]
+        chosen_path = filedialog.asksaveasfile(filetypes=file_names, defaultextension=file_names)
+        if chosen_path is None:
+            return
+
+        # Update tekst om billedet er blevet gemt
         self.text_save.configure(text="Billede gemt")
 
     # Decode beskeden i billedet
@@ -170,29 +174,29 @@ class ImageSteganography:
         self.insert_pixels(image, message)
         image.save(self.path)
 
-        path3 = Image.open(self.path)
-        wpercent = self.image_width / float(path3.size[0])
-        hsize = int((float(path3.size[1]) * float(wpercent)))
-        path3 = path3.resize((self.image_width, hsize), Image.ANTIALIAS)
-        path3 = ImageTk.PhotoImage(path3)
-        self.image_label.configure(image=path3)
-        self.image_label.image = path3
+        path_3 = Image.open(self.path)
+        wpercent = self.image_width / float(path_3.size[0])
+        hsize = int((float(path_3.size[1]) * float(wpercent)))
+        path_3 = path_3.resize((self.image_width, hsize), Image.ANTIALIAS)
+        path_3 = ImageTk.PhotoImage(path_3)
 
+        self.image_label.configure(image=path_3)
+        self.image_label.image = path_3
         self.text_encode_done.configure(text="Encoding færdig!")
 
     # Opstil knapperne, og hvilken metode de kører når de bliver klikket
     def init_buttons(self):
-        btn_open = Button(window, text="Open", command=self.open_button)
-        btn_open.place(x=220, y=80, anchor="center")
+        button_open = Button(window, text="Open", command=self.open)
+        button_open.place(x=220, y=80, anchor="center")
 
-        btn_save = Button(window, text="Save", command=self.save_button)
-        btn_save.place(x=480, y=80, anchor="center")
+        button_save = Button(window, text="Save", command=self.save)
+        button_save.place(x=480, y=80, anchor="center")
 
-        btn_encode = Button(window, text="Encode", command=self.encode)
-        btn_encode.place(x=220, y=544, anchor="center")
+        button_encode = Button(window, text="Encode", command=self.encode)
+        button_encode.place(x=220, y=544, anchor="center")
 
-        btn_decode = Button(window, text="Decode", command=self.decode)
-        btn_decode.place(x=480, y=544, anchor="center")
+        button_decode = Button(window, text="Decode", command=self.decode)
+        button_decode.place(x=480, y=544, anchor="center")
 
 
 ImageSteganography()
